@@ -59,7 +59,7 @@ The server connects by Ethernet directly to the ISP-provided modem/router (made 
 
 ## Local display
 
-A salvaged 11.6" laptop LCD panel driven by a generic LCD controller board (HDMI, DVI and VGA inputs), mounted on its original hinges to a wooden base. It connects by VGA from the HP's onboard VGA port to the controller board's VGA port, with an output resolution of 1024x600. The monitor is currently moved to my Raspberry Pi 4, since the server is managed from the web interface.
+A salvaged 11.6" laptop LCD panel driven by a generic LCD controller board (HDMI, DVI and VGA inputs), mounted on its original hinges to a wooden base. It connects by VGA from the HP's onboard VGA port to the controller board's VGA port, with an output resolution of 1024x600. The monitor is no longer plugged into the server, because I manage the server from the Proxmox web interface. I've used it since to set up my Raspberry Pis.
 
 ![Monitor, front](Images/monitor-front.jpg)
 ![Monitor, back](Images/monitor-back.jpg)
