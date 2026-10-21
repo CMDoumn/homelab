@@ -13,7 +13,7 @@ Two Raspberry Pis that support my [homelab server](../server/README.md). Documen
 | **Network** | Wired to the ISP modem at `192.168.1.138/24` and also on Wi-Fi at `192.168.1.139/24` (read 2026-10-19) |
 | **Idle temperature** | About 30 to 31°C with the case fan and heatsinks |
 
-I installed Raspberry Pi OS onto the microSD card myself using Raspberry Pi Imager. It's connected to my portable monitor, a keyboard, and a mouse. This was my first time using it.
+I installed Raspberry Pi OS onto the microSD card myself using Raspberry Pi Imager. I used my portable monitor, a keyboard, and a mouse to set it up, and this was my first time running it.
 
 ![Raspberry Pi 4 in its case, lid open](Images/pi4-case-open.jpg)
 
@@ -36,11 +36,15 @@ The temperature was read while the Pi was idle. I haven't tested it under load. 
 | **Header** | Soldered 40-pin GPIO header |
 | **Case** | Black ribbed case with a Wi-Fi symbol on the lid |
 | **Storage** | Gigastone 32GB microSD card |
-| **Operating system, network address, temperature** | Not recorded yet (waiting on a mini-HDMI cable) |
+| **Operating system** | Raspberry Pi OS 32-bit (Raspbian GNU/Linux 13 "trixie") |
+| **Network** | Wi-Fi at `192.168.1.189` (read 2026-10-20) |
+| **Idle temperature** | About 38°C (a single reading, a few minutes after booting) |
 
 I also installed Raspberry Pi OS onto its microSD card using Raspberry Pi Imager.
 
 ![Raspberry Pi Zero 2 W in its case](Images/pizero2w.jpg)
+
+I checked it with the same read-only commands as the Pi 4: `grep PRETTY_NAME /etc/os-release`, `uname -m` (which reported `armv7l`, meaning 32-bit), `ip -br addr`, and `vcgencmd measure_temp`. The modem assigns the address, so it can change.
 
 ## Planned roles
 
