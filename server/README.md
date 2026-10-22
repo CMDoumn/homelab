@@ -70,16 +70,17 @@ A salvaged 11.6" laptop LCD panel driven by a generic LCD controller board (HDMI
 
 **2. A failing drive came with the machine.** Before putting anything on the 4TB WD Purple, I checked its S.M.A.R.T. data in Proxmox. It failed its health check and showed hundreds of unreadable sectors. The only copy of my media was on an external drive, so I first copied it to a second drive and verified the size and file count matched, then disconnected the 4TB and confirmed it no longer appears in Proxmox.
 
+![4TB S.M.A.R.T. failure](Images/smart-4tb-failed.png)
+
 **3. The boot SSD reports a low wear indicator.** The Proxmox Disks table showed 95% Wearout for the boot SSD, so I opened its S.M.A.R.T. values. The Wear\_Leveling\_Count attribute has a normalized value of 5 against a threshold of 90, which usually means heavy wear. However, every bad-block counter (reallocated sectors, program failures, erase failures, used spare blocks) is 0, uncorrectable errors are 0, the spare-block count is at 800, and the drive still reports PASSED. Several attributes are also flagged "Failing NOW" despite zero counts, so I'm not sure this model's scores follow the usual scale, and I couldn't confirm what the wear number means. This drive doesn't report power-on hours.
+
+Decision: I'm keeping the SSD for now as a boot-only drive. VMs and logs will go on the 1TB drive, and I'll recheck the wear value periodically. If it drops further, I'll replace the SSD.
+
+![SSD S.M.A.R.T. wear values](Images/smart-ssd-wear.png)
 
 **4. The server had the wrong gateway.** While setting up a Windows Server VM, I gave it a fixed address using 192.168.1.1 as the gateway, the value shown on Proxmox's network page, and it couldn't reach the network. The VM's automatic settings showed the real gateway as 192.168.1.254. From the Proxmox shell, nothing answered at 192.168.1.1 (the neighbor table marked it FAILED), while 192.168.1.254 replied. The server's IPv4 route used the wrong gateway, so `ping 8.8.8.8` failed. It could still download files over IPv6, which hid the problem. I changed the gateway on `vmbr0` to 192.168.1.254 in the Proxmox network settings and confirmed it with `ip route show default` and a successful `ping 8.8.8.8`. I haven't confirmed how the wrong value got there.
 
 Lesson: test an address with ping before relying on it.
-
-Decision: I'm keeping the SSD for now as a boot-only drive. VMs and logs will go on the 1TB drive, and I'll recheck the wear value periodically. If it drops further, I'll replace the SSD.
-
-![4TB S.M.A.R.T. failure](Images/smart-4tb-failed.png)
-![SSD S.M.A.R.T. wear values](Images/smart-ssd-wear.png)
 
 ## Related projects
 
