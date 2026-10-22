@@ -76,8 +76,6 @@ A salvaged 11.6" laptop LCD panel driven by a generic LCD controller board (HDMI
 
 Lesson: test an address with ping before relying on it.
 
-![Proxmox network settings before the fix](Images/network-gateway-before.png)
-
 Decision: I'm keeping the SSD for now as a boot-only drive. VMs and logs will go on the 1TB drive, and I'll recheck the wear value periodically. If it drops further, I'll replace the SSD.
 
 ![4TB S.M.A.R.T. failure](Images/smart-4tb-failed.png)
