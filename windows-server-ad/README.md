@@ -21,7 +21,7 @@ I chose `.internal` for the domain name because ICANN has reserved it for privat
 2. **Windows Server install.** Windows can't see a VirtIO disk without a driver, so I loaded the `vioscsi` driver from the VirtIO ISO at the disk-selection screen, then installed the VirtIO guest tools.
 3. **Domain controller.** Gave DC01 a fixed address, renamed it, installed Active Directory Domain Services, and promoted it to a new forest. I didn't enable DHCP, since the home modem already hands out addresses.
 4. **Structure.** An OU called `Lab` with `Users`, `Groups`, and `Computers` inside it. Security groups `IT-Admins`, `Help-Desk`, and `Staff`. Four test users (one admin, one help desk, two staff), each placed in a group.
-5. **Delegation.** The `Help-Desk` group can reset passwords in the `Lab > Users` OU and has no other rights there.
+5. **Delegation.** The `Help-Desk` group can reset passwords in the `Lab > Users` OU and has no other rights there.  I tested it from the client, as described in the verification table below.
 6. **Admin group (lab shortcut).** `IT-Admins` is a member of Domain Admins. In a real company I would keep that group much smaller.
 7. **Group Policy.** A policy named `Lab-Computer-Logon-Banner`, linked to `Lab > Computers`, shows a sign-in message titled "Authorized Use Only".
 8. **Client.** Built a Windows 11 Enterprise VM, pointed its DNS at DC01, joined it to the domain, moved its computer account into `Lab > Computers`, and signed in as a domain user from the Staff group. The banner appeared before sign-in.
@@ -40,6 +40,8 @@ I chose `.internal` for the domain name because ICANN has reserved it for privat
 | Policy is linked | `Get-GPInheritance -Target "OU=Computers,OU=Lab,..."` | `Lab-Computer-Logon-Banner` linked, inheritance not blocked |
 | Policy contents | `Get-GPOReport` (XML) | Both the title and the message text are present |
 | Client signed in to the domain | `whoami` | `homelab\<staff user>` |
+| Delegation works as intended | Signed in to CLIENT01 as the help desk user (with the RSAT Active Directory tools installed) and tried three actions | Resetting a Staff user's password succeeded. Resetting the admin account's password was denied with "Access is denied". Creating a user wasn't possible, because the New option wasn't offered. |
+| Admin account is protected | `Get-ADUser <admin> -Properties AdminCount` | AdminCount was 1 for the admin account and empty for a Staff account |
 
 The Settings tab in Group Policy Management was blocked by Windows Server's Internet Explorer Enhanced Security Configuration, so I read the policy with `Get-GPOReport` and chose not to lower the server's security to view it.
 
@@ -59,12 +61,15 @@ The Settings tab in Group Policy Management was blocked by Windows Server's Inte
 ![DNS zones before the fix](images/dns-zones-before.png)
 ![DNS zones after the fix](images/dns-zones-after.png)
 
+**4. The client's RSAT install stalled.** To test the delegation from a client, I installed the RSAT Active Directory tools on CLIENT01. The install stalled twice on the VM's slow laptop disk, which was running at 100%. I waited, then restarted from inside Windows, and it eventually finished. I didn't find the cause.
+
 ## Limits
 
 - There's one domain controller, so there's no redundancy. The snapshots live on the same 1TB drive as the VMs, so they protect against mistakes and not against that drive failing.
 - IPv6 is turned off on the client, and `IT-Admins` is in Domain Admins. Both are lab shortcuts.
 - Both operating systems are evaluation editions, and DC01 needs rebuilding or renewing around April 2027.
-- DC01 doesn't start automatically after a server restart, because I left "Start at boot" off.
+- DC01 is set to start with the server. I haven't tested a full server restart yet.
+- The admin account lives in the same OU as the staff accounts, and only Windows' protection for privileged accounts kept the delegation from applying to it. In a real company I would keep admin accounts in a separate OU.
 
 ## Related projects
 
