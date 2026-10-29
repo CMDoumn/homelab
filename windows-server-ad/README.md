@@ -11,7 +11,7 @@ A Windows Server 2025 domain controller and a Windows 11 client, both running as
 | **Client** | CLIENT01 (VM 101), Windows 11 Enterprise evaluation (26H2, build 26300, per the ISO file name) |
 | **VM hardware** | 2 cores (host CPU type), 4GB RAM, 80GB thin-provisioned disk, UEFI with a virtual TPM 2.0, VirtIO disk and network, QEMU guest agent |
 | **Storage** | A LVM-Thin pool (`vmdata`, about 980 GB usable) on the salvaged 1TB drive from the server project |
-| **Licenses** | Microsoft evaluation editions. The Windows Server license was activated, with about 175 days remaining on 2026-10-27. The Windows 11 trial is 90 days per Microsoft's page, and I haven't checked it on the VM. |
+| **Licenses** | Microsoft evaluation editions. The Windows Server license was activated, with about 175 days remaining on 2026-10-27. The Windows 11 evaluation showed about 87 days remaining on 2026-10-28. |
 
 I chose `.internal` for the domain name because ICANN has reserved it for private use. `.local` is reserved for multicast DNS and can cause lookup problems.
 
@@ -67,7 +67,7 @@ The Settings tab in Group Policy Management was blocked by Windows Server's Inte
 
 - There's one domain controller, so there's no redundancy. The snapshots live on the same 1TB drive as the VMs, so they protect against mistakes and not against that drive failing.
 - IPv6 is turned off on the client, and `IT-Admins` is in Domain Admins. Both are lab shortcuts.
-- Both operating systems are evaluation editions, and DC01 needs rebuilding or renewing around April 2027.
+- Both operating systems are evaluation editions. DC01 needs rebuilding or renewing around April 2027, and CLIENT01 around late January 2027.
 - DC01 is set to start with the server. I haven't tested a full server restart yet.
 - The admin account lives in the same OU as the staff accounts, and only Windows' protection for privileged accounts kept the delegation from applying to it. In a real company I would keep admin accounts in a separate OU.
 
