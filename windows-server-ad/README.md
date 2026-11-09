@@ -77,5 +77,6 @@ The Settings tab in Group Policy Management was blocked by Windows Server's Inte
 - [Custom-built PC](../custom-pc/README.md)
 - [Raspberry Pi 4 and Pi Zero 2 W](../raspberry-pi/README.md)
 - [Backup storage](../backup-storage/README.md)
+- [Help desk (GLPI)](../help-desk/README.md)
 
 *Passwords, product keys, serial numbers, hardware addresses, and internet addresses tied to my home connection are not shown.*
