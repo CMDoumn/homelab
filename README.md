@@ -6,7 +6,7 @@ Documentation for my home IT lab: a repurposed server running Proxmox, a custom-
 
 | Project | What it covers |
 |---|---|
-| [Proxmox homelab server](server/README.md) | An HP EliteDesk 800 G1 TWR (i5-4590, 16GB RAM) turned into a Proxmox VE virtualization host. Includes BIOS setup, drive health checks, and a failed 4TB drive that I retired. |
+| [Proxmox homelab server](server/README.md) | An HP EliteDesk 800 G1 TWR (i5-4590, 32GB RAM) turned into a Proxmox VE virtualization host. Includes BIOS setup, drive health checks, and a failed 4TB drive that I retired. |
 | [Windows Server Active Directory lab](windows-server-ad/README.md) | A Windows Server 2025 domain controller and a Windows 11 client running as VMs. Includes an OU and group structure, delegated password resets, a Group Policy, and a domain-join failure caused by missing DNS records. |
 | [Help desk (GLPI)](help-desk/README.md) | A GLPI 12 help desk on Ubuntu Server with tickets for my build problems, an asset inventory, runbooks, an SLA, and a hardened install. |
 | [File server](file-server/README.md) | File shares on the Windows Server 2025 domain controller, with access controlled by Active Directory groups (Staff, Help-Desk, IT-Admins). Includes both share and NTFS permissions, tests from a client as each role, and a note that running it on the domain controller is a deliberate lab shortcut. |
