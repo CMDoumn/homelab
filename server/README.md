@@ -1,6 +1,6 @@
 # Homelab Server: HP EliteDesk 800 G1 TWR running Proxmox VE
 
-A repurposed HP desktop turned into the virtualization host for my homelab. The other lab projects run on it and link back here. Documented October 2026.
+A repurposed HP desktop turned into the virtualization host for my homelab. The other lab projects run on it and link back here. Documented October 2026. Updated November 2026.
 
 ## Overview
 
@@ -16,7 +16,7 @@ A repurposed HP desktop turned into the virtualization host for my homelab. The 
 |Component|Details|Original or added|
 |-|-|-|
 |CPU|Intel Core i5-4590, 4 cores / 4 threads, 3.30GHz|Original|
-|RAM|16GB DDR3-1600 (4x 4GB: three Samsung M378B5173QH0-CK0, one Micron 8JTF51264AZ-1G6E1), all running at 1600 MT/s|Original|
+|RAM|32GB DDR3-1600 (4x 8GB Gigastone DDR3/DDR3L-1600 CL11 UDIMM), all running at 1600 MT/s. See RAM upgrade below.|**Upgraded by me (November 2026)**. Originally 16GB.|
 |Boot drive|LITEON LCS-128L9S-11, 128GB SSD (Proxmox OS)|Original|
 |VM storage|Seagate ST1000LM024, 1TB HDD, salvaged from a broken laptop|**Added by me**|
 |Network|Onboard Intel I217-LM Gigabit Ethernet|Original|
@@ -33,6 +33,39 @@ A repurposed HP desktop turned into the virtualization host for my homelab. The 
 ### Drives on hand, not installed
 
 A 160GB and a 500GB laptop HDD, kept for future VM storage.
+
+## RAM upgrade (November 2026)
+
+With three VMs running, the server was using about three quarters of its 16GB, and I have more VMs planned. I replaced the original 4x 4GB sticks (three Samsung M378B5173QH0-CK0 and one Micron 8JTF51264AZ-1G6E1) with 4x 8GB Gigastone DDR3/DDR3L-1600 CL11 UDIMMs, filling all four slots. 32GB is the most this machine supports.
+
+|| Before (16GB) | After (32GB) |
+|-|-|-|
+|Total RAM seen by Proxmox|15.51 GiB|31.24 GiB|
+|RAM in use, same three VMs running|11.86 GiB (about 76%)|10.73 GiB (34.34%)|
+|Memory speed|1600 MT/s|1600 MT/s|
+
+![Proxmox summary with 32GB](Images/proxmox-summary-32gb.png)
+
+### What I checked
+
+**The firmware sees all four sticks.** I read the memory details from the Proxmox shell with `dmidecode -t memory`, filtered to leave out serial numbers. All four slots (DIMM1 to DIMM4) report 8 GB, DDR3, 1600 MT/s, with a configured speed of 1600 MT/s.
+
+![Memory details from the firmware](Images/ram-dmidecode-after.png)
+
+**The manufacturer differs from the brand.** The firmware reports the manufacturer as Samsung and the part number as `LO8G1600CL11`, but the sticks are labelled Gigastone. A likely explanation is that Gigastone assembles its modules from other makers' memory chips. I haven't confirmed this, and a quick search didn't find that part number.
+
+**The restart behaved correctly.** This was the first full restart since I fixed the gateway, and the first test of start-at-boot for the domain controller VM.
+
+* At 16:24:52 Proxmox logged "Bulk start VMs and Containers" and "VM 100 - Start" in the same second, so `dc01` started by itself. I started `client01` and `glpi01` by hand about four and a half minutes later, because they aren't set to start at boot. The Status column was cut off in my screenshot, so I didn't read it.
+* `ip route show default` returned `default via 192.168.1.254 dev vmbr0`, and `ping 1.1.1.1` got 3 of 3 replies with 0% packet loss.
+
+![Proxmox task log after the restart](Images/bulk-start-after-reboot.png)
+
+### Observations
+
+* Swap usage is 0 B of 8 GiB.
+* The two memory readings in the table were taken at different times, so I can't say the new RAM made the same VMs use less.
+* IO delay was 43.24% about 35 minutes after the VMs started. The VM storage is a slow laptop hard drive, which would fit, but I haven't confirmed that's the cause. I haven't measured it with everything idle.
 
 ## Software
 
