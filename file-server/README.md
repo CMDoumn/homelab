@@ -117,5 +117,6 @@ The IT admin account could also see the files created by the other two users in 
 
 ## Related projects
 
-- [Windows Server and Active Directory](../windows-server-ad/README.md)
-- [Proxmox server](../server/README.md)
+- Windows Server and Active Directory: [Windows Server and Active Directory](../windows-server-ad/README.md)
+- Endpoint management: [Windows Update and software deployment through Group Policy](../endpoint-management/README.md)
+- Proxmox server: [Proxmox server](../server/README.md)
