@@ -121,6 +121,7 @@ Lesson: test an address with ping before relying on it.
 * Backup storage: [external drives](../backup-storage/README.md)
 * Lab support hardware: [Raspberry Pi 4 and Pi Zero 2 W](../raspberry-pi/README.md)
 * Help Desk: [Help desk (GLPI)](../help-desk/README.md)
+* Endpoint management: [Windows Update and software deployment through Group Policy](../endpoint-management/README.md)
 
 \*Serial numbers, hardware addresses, and labels have been removed or covered in the images. IP addresses are private (home network) addresses.
 
