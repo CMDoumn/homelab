@@ -68,7 +68,7 @@ The Settings tab in Group Policy Management was blocked by Windows Server's Inte
 - There's one domain controller, so there's no redundancy. The snapshots live on the same 1TB drive as the VMs, so they protect against mistakes and not against that drive failing.
 - IPv6 is turned off on the client, and `IT-Admins` is in Domain Admins. Both are lab shortcuts.
 - Both operating systems are evaluation editions. DC01 needs rebuilding or renewing around April 2027, and CLIENT01 around late January 2027.
-- DC01 is set to start with the server. I haven't tested a full server restart yet.
+- DC01 is set to start with the server. After the RAM upgrade in November 2026, a full server restart started DC01 by itself: the Proxmox task log shows "Bulk start VMs and Containers" and "VM 100 - Start" in the same second. CLIENT01 and the help desk VM aren't set to start at boot, and I started them by hand.
 - The admin account lives in the same OU as the staff accounts, and only Windows' protection for privileged accounts kept the delegation from applying to it. In a real company I would keep admin accounts in a separate OU.
 
 ## Related projects
@@ -78,5 +78,7 @@ The Settings tab in Group Policy Management was blocked by Windows Server's Inte
 - [Raspberry Pi 4 and Pi Zero 2 W](../raspberry-pi/README.md)
 - [Backup storage](../backup-storage/README.md)
 - [Help desk (GLPI)](../help-desk/README.md)
+- [Endpoint management](../endpoint-management/)
+- [File server](../file-server/)
 
 *Passwords, product keys, serial numbers, hardware addresses, and internet addresses tied to my home connection are not shown.*
