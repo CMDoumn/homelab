@@ -1,10 +1,10 @@
 # Endpoint management on Windows Server (DC01)
 
-**Status:** In progress. Parts 1 and 2 are built and tested. Part 3 (WSUS) and a replacement for imaging are planned. | **Built:** 2026-11-14 to 2026-11-15
+**Status:** Parts 1 to 3 are built and tested. Part 4 (imaging) is still open. | **Built:** 2026-11-14 to 2026-11-18
 
 ## Goal
 
-Manage a Windows 11 client from the domain controller: control how it takes Windows updates, and install software on it without touching it. Both are done with Group Policy and tested on a domain-joined client.
+Manage a Windows 11 client from the domain controller: control how it takes Windows updates, install software on it without touching it, and run my own update server (WSUS) for it. The first two use Group Policy, the third adds a WSUS server. All of it is tested on a domain-joined client.
 
 ## Scope: what changed from my plan
 
@@ -20,20 +20,21 @@ So I split the project into parts:
 | --- | --- | --- |
 | 1 | Windows Update settings through Group Policy | Done |
 | 2 | Software deployment through Group Policy | Done |
-| 3 | WSUS | Planned (needs a new VM) |
+| 3 | WSUS | Done |
 | 4 | Imaging | To be decided. WDS and MDT are dropped. |
 
 ## Environment
 
 * **DC01:** Windows Server 2025 Standard (evaluation) in a Proxmox VM, domain `homelab.internal`. See the [Proxmox server](../server/) page for the host, which now has 32GB of RAM.
 * **client01:** Windows 11 Enterprise (evaluation, 26H2), joined to the domain and in the `Lab > Computers` OU.
-* Both policies below are linked to `Lab > Computers`, next to my logon banner policy from the [Windows Server and Active Directory project](../windows-server-ad/).
+* **wsus01:** Windows Server 2025 Standard (evaluation) in a Proxmox VM, a domain member in the `Lab > Servers` OU. Built in Part 3.
+* The policies below are linked to `Lab > Computers`, next to my logon banner policy from the [Windows Server and Active Directory project](../windows-server-ad/).
 
 ## Part 1: Windows Update through Group Policy
 
 ### Design
 
-One policy, `Lab-Computer-Windows-Update`, with three settings. I did not point the client at a WSUS server, because that is Part 3.
+One policy, `Lab-Computer-Windows-Update`, with three settings. I did not point the client at a WSUS server in this part, because Part 3 adds that.
 
 | Setting | Value |
 | --- | --- |
@@ -88,6 +89,12 @@ Windows 11 also lists the policies itself, under Settings > Windows Update > Adv
 * **I ran the client checks on the wrong machine.** `gpupdate` and `gpresult` ran on DC01, and the list showed the Default Domain Controllers Policy, which only applies to domain controllers, and not my Lab policies. `hostname` confirmed it. Lesson: check `hostname` before running anything with two similar consoles open.
 * **A one-word path typo.** My first `reg query` left out `Windows\` in the path and returned "unable to find the specified registry key". The same kind of slip as an earlier `Share` and `Shares` error in the file server project.
 * **No "managed by your organization" banner.** The Settings page showed nothing, even after reopening it. A forum post said Windows 11 doesn't show that message, and the policy list under Advanced options is where it shows the policies. I haven't confirmed that with a Microsoft page.
+
+### Not tested
+
+I did not wait for a real 03:00 install or a forced restart at a deadline. I tested that the settings arrive and are stored correctly, not what Windows does with them.
+
+![Windows Update page with no banner](images/wu-settings-page-no-banner.png)
 
 ## Part 2: Software deployment through Group Policy
 
@@ -155,15 +162,141 @@ It returned `Mozilla Firefox ESR (x64 en-US)`, version `153.7.0`, matching the p
 
 * The Component Status table showed a Software Installation time of 3 hours 29 minutes, and an earlier report showed 1 hour 20 minutes for another row. Processing doesn't take hours. I suspect a clock jump or time sync problem on the VM, but I haven't checked.
 
+## Part 3: WSUS (Windows Server Update Services)
+
+### Design
+
+**A separate server.** I built a new VM, `wsus01`, and did not put WSUS on the domain controller. A critical WSUS remote code execution flaw (CVE-2025-59287) was disclosed in October 2025. I read about it in news and security sites, not all from Microsoft. A web-facing service with that kind of history doesn't belong on the machine that holds every account in the domain. DC01 also only has 4GB of RAM and an 80GB disk, and the RAM upgrade gave the host room for another VM. Two rules for the build: patch the VM fully before adding the WSUS role, and never forward ports 8530 or 8531 on the home modem.
+
+**The VM:**
+
+| Item | Value |
+| --- | --- |
+| OS | Windows Server 2025 Standard Evaluation (Desktop Experience), from the 26100 evaluation ISO |
+| Hardware | 2 cores (host CPU type), 8GB RAM, 120GB thin-provisioned disk on the `vmdata` pool, UEFI, virtual TPM 2.0, VirtIO disk and network, QEMU guest agent |
+| Network | Fixed `192.168.1.55/24`, gateway `192.168.1.254`, DNS `192.168.1.50` (DC01 only) |
+| Active Directory | Domain member in a new `Lab > Servers` OU |
+
+**A new OU.** `Lab > Servers` keeps `wsus01` out of `Lab > Computers`, so the Firefox install and the client update policies never apply to it.
+
+**WSUS choices:**
+
+| Choice | Value | Reason |
+| --- | --- | --- |
+| Update source | Microsoft Update | It's my only WSUS server |
+| Languages | English only | Smaller download |
+| Product | Windows 11 only (the plain entry) | The versioned entries cover drivers, and some driver packages are about 1 GB |
+| Classifications | Critical Updates and Security Updates | Definition Updates was ticked by default, and I unticked it, because it would add a stream of small updates |
+| Sync | Manual, with no sync at the end of the wizard | I wanted to take a snapshot first and watch the first sync |
+| Update files | Stored in `C:\WSUS`, downloaded when an update is approved | A lab shortcut: a real server would use a separate data drive |
+
+### What I did
+
+1. Checked free space on the VM storage pool (about 154 GB used of 980 GB), then created the VM in Proxmox.
+2. Installed Windows Server, loading the VirtIO disk driver from the driver ISO during setup, then the VirtIO guest tools.
+3. Gave `wsus01` a fixed address and pointed its DNS at DC01. I pinged the address first to check nothing used it, and tested `nslookup dc01.homelab.internal`, which DC01 answered.
+4. Created the `Lab > Servers` OU on DC01 (`New-ADOrganizationalUnit -Name "Servers" -Path "OU=Lab,DC=homelab,DC=internal"`) and confirmed it with `Get-ADOrganizationalUnit`.
+
+   ![The Servers OU](images/wsus-ou-servers.png)
+
+5. Joined `wsus01` to the domain and renamed it (see below), then confirmed its account is in `Lab > Servers` with `Get-ADComputer wsus01`.
+
+   ![wsus01 computer account](images/wsus-computer-account.png)
+
+6. Took a snapshot (`after_domainjoin`), then patched the server fully (see below) and took another (`after_patching`).
+7. Installed the WSUS role, made a folder for the update files and ran the post-install setup:
+
+   ```powershell
+   Install-WindowsFeature -Name UpdateServices -IncludeManagementTools
+   New-Item -Path C:\WSUS -ItemType Directory
+   & "C:\Program Files\Update Services\Tools\wsusutil.exe" postinstall CONTENT_DIR=C:\WSUS
+   ```
+
+   The install reported Success `True` and Restart Needed `No`, and the post-install setup completed.
+
+   ![WSUS role installed](images/wsus-role-installed.png)
+
+8. Went through the WSUS configuration wizard with the choices above, took a snapshot (`after_wsus_setup`), and started the first sync by hand.
+9. Looked at what the sync had downloaded, then created the `Lab-Computer-WSUS` policy and linked it to `Lab > Computers`.
+10. Pointed client01 at WSUS, made a `Lab-Clients` group, moved client01 into it, and approved one update for that group.
+11. Took snapshots of the three VMs (`after_wsus_tested` on `wsus01`, `after_wsus_policy` on DC01, `after_wsus_client` on client01).
+
+### The update catalog
+
+The first sync succeeded. I didn't record how long it took. The Windows 11 product pulled in **441 updates** (436 shown with the console's default filter, and I don't know why five are hidden), all classified as Security Updates, from 2022 to 2026, for several Windows 11 versions and for both x64 and ARM64. So the plain Windows 11 product covers every version, and updates have to be approved one at a time and not in bulk. A search for 26H2, the version client01 runs, found 10 updates, including the 2026-09, 2026-10 and 2026-11 cumulative updates for x64 and ARM64.
+
+![Windows 11 product list](images/wsus-products.png)
+![The 441 updates after the first sync](images/wsus-all-updates.png)
+![Updates that mention 26H2](images/wsus-26h2-updates.png)
+
+### The policy
+
+`Lab-Computer-WSUS` is its own policy, not another setting in the update policy, so I can switch WSUS on and off for client01 without touching the schedule and deadlines. It sets "Specify intranet Microsoft update service location" under Computer Configuration > Administrative Templates > Windows Components > Windows Update > Manage updates offered from Windows Server Update Service. I confirmed the port with `Get-WsusServer | Select-Object Name, PortNumber` (8530).
+
+| Box | Value |
+| --- | --- |
+| Intranet update service for detecting updates | `http://wsus01.homelab.internal:8530` |
+| Intranet statistics server | `http://wsus01.homelab.internal:8530` |
+| Alternate download server | Empty |
+
+The address uses `http`, not `https`, because I didn't set up encryption.
+
+![The WSUS policy setting](images/wsus-policy-setting.png)
+
+### Checking it worked
+
+On client01, I ran `gpupdate /force` and read the registry again. It held `WUServer` and `WUStatusServer` (both `http://wsus01.homelab.internal:8530`) and `UseWUServer` = 0x1 under `AU`, plus every Part 1 value, so the two policies work together.
+
+![WSUS address stored on client01](images/wsus-client-registry.png)
+
+Windows Update on client01 said "up to date". That didn't prove it was talking to WSUS, so I looked in the WSUS console. client01 was listed (I had to set the Status filter to Any), which only happens once a computer has reported in. I made a `Lab-Clients` computer group and moved client01 into it by hand with Change Membership.
+
+Next I approved the 2026-11 cumulative update for x64 (KB5132061) for `Lab-Clients` only. The Download Status page showed one update needing files, then bytes going up, then none needed, so WSUS fetched the update file after approval and not before. That matches how I understand the default setting, which I haven't looked at. After client01 scanned again, WSUS showed the update as **100% installed/not applicable**, and client01's **Last Status Report** was 11/18/2026 11:06 AM.
+
+![client01 in Lab-Clients](images/wsus-client-in-group.png)
+![The approved update](images/wsus-approved-update.png)
+
+### What this did and didn't prove
+
+client01's build is 26300.9974, the same build as in the title of KB5132061, so it already had the November update. It must have installed it from Microsoft before I pointed it at WSUS. So WSUS had nothing to deliver. The 100% column combines "installed" and "not applicable", and it doesn't say which, but the matching build makes "installed" almost certain. What I did show is that client01 takes its settings from the WSUS policy, registers with the server, sits in the right group, and reports its status after an approval. I did **not** show WSUS delivering an update that client01 was missing. The next chance is Microsoft's December update, around December 8 (the second Tuesday).
+
+### What went wrong and what I learned
+
+* **A missed boot prompt.** The new VM showed a boot device menu, and my first attempts to boot from the Windows disc dropped back to it. The "press any key" prompt only stays up for a few seconds, and I wasn't pressing a key fast enough. The disc I'd tried first was the right one all along. Lesson: tap a key repeatedly as soon as the console comes up.
+* **The domain join half-worked.** My first `Add-Computer` failed with "Cannot validate argument on parameter 'Credential'. The argument is null or empty", because the password pop-up never appeared in the console. I collected the password in the console instead (`Read-Host -AsSecureString`) and built the credential from it. The second attempt joined the domain but failed to rename the server, with "The directory service is busy". `Rename-Computer -NewName "wsus01" -DomainCredential $cred -Restart` then worked. I don't know why the directory service was busy.
+
+  ![Join succeeded, rename failed](images/wsus-join-rename-error.png)
+
+* **Patching looked stuck and wasn't.** The server had five updates waiting, including the 2026-11 security update (KB5131080), which takes Windows Server 2025 to build 26100.33822.
+
+  ![Five updates found on wsus01](images/wsus-patch-list.png)
+
+  The update sat at 74% for over an hour. I checked three things: the VM's processor and disk graphs in Proxmox (low but not zero), the Windows update worker process's processor time (240.27 to 240.77 seconds in about a minute), and the servicing log (`C:\Windows\Logs\CBS\CBS.log`), which had not been written to for about 26 minutes. I read all of that as stuck and rolled the VM back to its snapshot.
+
+  The second try stalled at 74% again, even with `client01` and `glpi01` shut down to free up the slow drive. This time I left it overnight. By morning it had finished and restarted itself, and the build number was 26100.33822. So it was slow, not stuck, and the rollback wasn't needed. I can't say whether shutting the other VMs down helped. Lesson: a quiet log doesn't prove an update has stalled, and a patient wait is the only real test.
+
+* **The console shows what it loaded at the last refresh.** I misread a stale screen as if client01 hadn't reported. Refresh the WSUS console before reading it.
+
+### Observations I didn't follow up
+
+* The Operating System column in WSUS shows client01 as "Windows 10 Enterprise", although it runs Windows 11. I haven't found out why.
+* The Approval column for the approved update says `Install (1/3)`. I take it to mean approved for one of three groups, but I haven't checked.
+* The Installed/Not Applicable column on the update list stayed empty at the start, because I had approved nothing yet. I believe WSUS only evaluates approved updates for a client, but I haven't confirmed that.
+* Microsoft's notes for the November update say WSUS doesn't show synchronization error details after a recent change. My sync succeeded, so I didn't need them.
+
 ## Limitations and not tested
 
-* One client and one package.
-* I did not test removing Firefox through Group Policy. The setting "uninstall when out of scope" is off, and Mozilla's page says its MSI doesn't support uninstalling with `msiexec /x`.
-* The file share is on the domain controller. That is a lab shortcut, as in the file server project.
-* Not done: WSUS, imaging, and updating a deployed package.
+* One client, one package and one WSUS update. I did not test WSUS delivering a missing update (see above).
+* Not tested: a real 03:00 install, a forced restart at a deadline, removing Firefox through Group Policy, or updating a deployed package.
+* The update files are on the C: drive of `wsus01`, and the share is on the domain controller. Both are lab shortcuts.
+* The VM storage is a slow laptop hard drive, which made the patching slow.
+* WSUS is set to sync by hand, and there are no approval rules, no clean-up and no HTTPS. It's only reachable on my home network, and I did not open any ports to the internet.
+* Computers are placed in `Lab-Clients` by hand. I didn't try a Group Policy to do it automatically.
+* `wsus01` is an evaluation edition, which expires in roughly six months. I haven't checked the exact date.
+* Not done: imaging (Part 4).
 
 ## Related projects
 
-* [Windows Server and Active Directory](../windows-server-ad/README.md)
-* [File server](../file-server/README.md)
-* [Proxmox server](../server/README.md)
+* [Windows Server and Active Directory](../windows-server-ad/)
+* [File server](../file-server/)
+* [Proxmox server](../server/)
