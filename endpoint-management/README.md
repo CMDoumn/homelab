@@ -89,12 +89,6 @@ Windows 11 also lists the policies itself, under Settings > Windows Update > Adv
 * **A one-word path typo.** My first `reg query` left out `Windows\` in the path and returned "unable to find the specified registry key". The same kind of slip as an earlier `Share` and `Shares` error in the file server project.
 * **No "managed by your organization" banner.** The Settings page showed nothing, even after reopening it. A forum post said Windows 11 doesn't show that message, and the policy list under Advanced options is where it shows the policies. I haven't confirmed that with a Microsoft page.
 
-### Not tested
-
-I did not wait for a real 03:00 install or a forced restart at a deadline. I tested that the settings arrive and are stored correctly, not what Windows does with them.
-
-![Windows Update page with no banner](images/wu-settings-page-no-banner.png)
-
 ## Part 2: Software deployment through Group Policy
 
 ### Design
