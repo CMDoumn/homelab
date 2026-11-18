@@ -17,7 +17,7 @@ Documentation for my home IT lab: a repurposed server running Proxmox, a custom-
 
 ## Status
 
-This is a work in progress. The hardware is documented, the Windows Server Active Directory lab is built and written up, Help Desk (GLPI) is set up and tested, and the file server is built and tested from a client as each role. Endpoint management is partly built: Windows Update settings and software deployment through Group Policy work on a test client, and WSUS is still planned. The other lab projects I have planned, such as firewalling and monitoring, are not built yet, so they aren't listed here.
+This is a work in progress. The hardware is documented, the Windows Server Active Directory lab is built and written up, Help Desk (GLPI) is set up and tested, and the file server is built and tested from a client as each role. Endpoint management is built and tested on a test client: Windows Update settings and software deployment through Group Policy, and a WSUS server that the client registers with and reports to. WSUS has not yet delivered an update the client was missing, so that part is only partly proven, and imaging is still open. The other lab projects I have planned, such as firewalling and monitoring, are not built yet, so they aren't listed here.
 
 ## How I document
 
