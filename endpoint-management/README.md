@@ -1,6 +1,6 @@
 # Endpoint management on Windows Server (DC01)
 
-**Status:** Parts 1 to 3 are built and tested. Part 4 (imaging) is still open. | **Built:** 2026-11-14 to 2026-11-18
+**Status:** Parts 1 to 3 are built and tested. Part 4 (imaging) is skipped for now. | **Built:** 2026-11-14 to 2026-11-18
 
 ## Goal
 
@@ -12,7 +12,7 @@ My plan listed WSUS, WDS and MDT. Before building anything I checked their statu
 
 * **WSUS** is deprecated but still works on Windows Server 2025.
 * **MDT** was retired in January 2026, and its downloads were pulled.
-* **WDS** still exists but is being phased out, and Windows 11 can't be deployed end to end with WDS alone.
+* **WDS** still works for now, but Microsoft has said the whole role will be deprecated starting with the next major Windows Server release. Its older WDS-mode way of deploying Windows 11 was deprecated in 2021, although deploying custom images over PXE stayed possible.
 
 So I split the project into parts:
 
@@ -21,7 +21,7 @@ So I split the project into parts:
 | 1 | Windows Update settings through Group Policy | Done |
 | 2 | Software deployment through Group Policy | Done |
 | 3 | WSUS | Done |
-| 4 | Imaging | To be decided. WDS and MDT are dropped. |
+| 4 | Imaging | Skipped for now. WDS is being deprecated, MDT is retired, and I don't yet know which replacement is most used in business. I'll come back to it. |
 
 ## Environment
 
