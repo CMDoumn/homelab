@@ -186,4 +186,5 @@ These shift from moment to moment, and Unbound's memory use grows as it stores a
 
 ## Related projects
 
-Links to be added.
+* Admin workstation: [custom-built PC](../custom-pc/README.md)
+* Raspberry Pi Hardware: [Raspberry Pi 4 and Pi Zero 2 W](raspberry-pi/README.md) 
