@@ -54,5 +54,6 @@ I would decide on the motherboard myself, checking its socket and memory type ag
 
 - [Proxmox homelab server](../server/README.md), which I manage from this PC
 - Backup storage: [external drives](../backup-storage/README.md)
+- [Pi-hole and Unbound DNS](../pihole-unbound/README.md): I ran the setup and DNS tests from this PC. My VPN likely blocked DNS questions to the Pi-hole until I turned it off.
 
 *Serial numbers and labels have been covered in the images.*
