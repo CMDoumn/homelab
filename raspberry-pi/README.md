@@ -55,5 +55,6 @@ These come from my project plan and aren't built yet. The Pi Zero is meant for a
 - [Proxmox homelab server](../server/README.md)
 - [Custom-built PC](../custom-pc/README.md)
 - [Backup storage](../backup-storage/README.md)
+- [Pi-hole and Unbound DNS](../pihole-unbound/README.md)
 
 *Hardware addresses and serial numbers are not shown. IP addresses are private (home network) addresses.*
