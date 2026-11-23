@@ -56,5 +56,6 @@ These come from my project plan and aren't built yet. The Pi Zero is meant for a
 - [Custom-built PC](../custom-pc/README.md)
 - [Backup storage](../backup-storage/README.md)
 - [Pi-hole and Unbound DNS](../pihole-unbound/README.md)
+- [WireGuard remote access](../wireguard/README.md): a tunnel on the same Pi that lets my phone check this Pi-hole from mobile data.
 
 *Hardware addresses and serial numbers are not shown. IP addresses are private (home network) addresses.*
