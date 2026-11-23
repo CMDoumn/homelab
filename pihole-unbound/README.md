@@ -187,4 +187,5 @@ These shift from moment to moment, and Unbound's memory use grows as it stores a
 ## Related projects
 
 * Admin workstation: [custom-built PC](../custom-pc/README.md)
-* Raspberry Pi Hardware: [Raspberry Pi 4 and Pi Zero 2 W](raspberry-pi/README.md) 
+* Raspberry Pi Hardware: [Raspberry Pi 4 and Pi Zero 2 W](raspberry-pi/README.md)
+* WireGuard: [WireGuard remote access](../wireguard/README.md)
