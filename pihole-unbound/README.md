@@ -183,6 +183,7 @@ These shift from moment to moment, and Unbound's memory use grows as it stores a
 - **The phone is on a static IP.** If the modem gave its address to another device there would be a clash. I will switch it back to automatic (DHCP) when testing ends.
 - **The Pi has no backup.** If the memory card fails I would rebuild from these steps.
 - **Debian 13 support is not confirmed in the official docs.** It installed and ran.
+- *These limits are as of 2026-11-20, when only my phone used the Pi-hole. Part 2 below says which have changed.*
 
 ## Part 2: Using it for the whole network
 
