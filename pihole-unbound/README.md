@@ -184,6 +184,162 @@ These shift from moment to moment, and Unbound's memory use grows as it stores a
 - **The Pi has no backup.** If the memory card fails I would rebuild from these steps.
 - **Debian 13 support is not confirmed in the official docs.** It installed and ran.
 
+## Part 2: Using it for the whole network
+
+**Built:** 2026-11-23 to 2026-11-24
+
+Part 1 above describes the state on 2026-11-20, when only my phone used the Pi-hole. This part switches it on for the rest of the network and checks that the lab's own names (`homelab.internal`) still work.
+
+### Goal
+
+Make every device that takes its settings from the modem use the Pi-hole, without breaking the lab's names. Each step is proved from both sides: what the device says it asked, and what Pi-hole's Query Log says it received.
+
+### How it fits together now
+
+```
+Device on the home network (phone, PC, consoles...)
+   |  asks the modem for its settings (DHCP)
+   |  the modem now answers: "DNS server = 192.168.1.189"
+   v
+Pi-hole on BananaCream (192.168.1.189)
+   |-- names ending in homelab.internal --> DC01 (192.168.1.50), which knows the lab's names
+   |-- blocked names get the answer 0.0.0.0
+   |-- everything else --> Unbound (127.0.0.1, port 5335) --> the internet's DNS servers
+```
+
+The lab itself is not behind the Pi-hole. `client01` asks DC01 for DNS, and DC01 passes unknown names to the modem. I left that alone on purpose (step 20).
+
+## What I did (Part 2)
+
+### 14. Checked the Pi was healthy
+
+`systemctl is-active pihole-FTL unbound wg-quick@wg0` printed `active` three times (Pi-hole, Unbound, WireGuard).
+
+### 15. Wrote down the modem's original setting
+
+The modem's DNS server box (Local Network > LAN > DHCP settings, advanced view) held `192.168.1.254`, the modem itself, and DHCP Server was on. That is the undo: put `192.168.1.254` back in the box and save. The modem's lease time turned out to be 24 hours (step 21).
+
+### 16. Checked whether devices could skip Pi-hole
+
+- **Android Private DNS** on my phone was on Automatic. I only read the setting.
+- **IPv6, the Pi's view:** `nmcli device show wlan0 | grep DNS` showed one IPv4 DNS line (`192.168.1.254`) and no IPv6 DNS line. I first took that as a good sign. It was misleading.
+- **IPv6, the modem's announcement:** I installed `ndisc6` and ran `sudo rdisc6 wlan0`, which prints the modem's router announcement. It contains a `Recursive DNS server` line (the modem's own IPv6 address, left out here), a DNS search list of `lan`, and "Stateful other conf: Yes". So the modem does announce itself as an IPv6 DNS server, even though the Pi did not list it. I do not know why.
+- **Does that server work, and does it block?** `dig +short @<modem's IPv6 address> doubleclick.net` returned a normal address, not `0.0.0.0`. A device using it would get answers but no blocking.
+- **My PC** had no IPv6 address on Wi-Fi, so this route could not apply to it.
+
+I did not find out which devices actually use the modem's IPv6 DNS.
+
+### 17. Tested one more device first: my PC
+
+With the PC's VPN off, I set its Wi-Fi DNS by hand to `192.168.1.189`. Then:
+
+- `nslookup example.com` showed `Server: pi.hole`, `Address: 192.168.1.189`, and Pi-hole's Query Log had a row for it.
+- `nslookup doubleclick.net` returned `0.0.0.0` (and `::`), so blocking works for the PC.
+
+With the VPN turned back on, the same lookup showed `Server: UnKnown`, `Address: 103.86.96.100`, which is the VPN company's DNS server. The VPN overrides Pi-hole.
+
+![PC asking the VPN's DNS server instead of Pi-hole](images/pc-vpn-overrides-dns.png)
+
+I then set the PC's DNS back to automatic (DHCP).
+
+### 18. Found the gap in the lab's names
+
+DC01's DNS forwarder is the modem (`Get-DnsServerForwarder` showed `192.168.1.254`). Pi-hole knew nothing about the lab: `nslookup wsus01.homelab.internal 192.168.1.189`, run on DC01, answered `Non-existent domain`. Asking DC01 itself (`... 192.168.1.50`) returned `192.168.1.55` (plus an IPv6 address). So the lab's names live only on DC01, and a device that asked Pi-hole for them would fail.
+
+A first run of this test used `wsus` instead of `wsus01`. A name that doesn't exist gets the same error from any DNS server, so that run proved nothing. I repeated it with the exact name.
+
+### 19. Added a rule that sends the lab's names to DC01
+
+Pi-hole calls this setting "Rev server" (formerly "conditional forwarding"). Versions: Core v6.6, Web v6.6.1, FTL v6.9. Before changing anything I copied the settings file (`sudo cp -p /etc/pihole/pihole.toml /root/pihole.toml.bak-2026-11-23`). I then set the rule from the command line. Pi-hole's docs say the web interface, API and CLI check entries for errors, and a forum post reported the web form failing to save this setting on an older version.
+
+```
+sudo pihole-FTL --config dns.revServers '[ "true,192.168.1.0/24,192.168.1.50,homelab.internal" ]'
+```
+
+The four parts are `true` (on), `192.168.1.0/24` (the home network range, used for reverse lookups), `192.168.1.50` (DC01) and `homelab.internal` (the domain). Before the change the setting printed `[]`, and afterwards it printed the new rule. The undo is `sudo pihole-FTL --config dns.revServers '[]'`.
+
+![The stored rule](images/pihole-revserver-setting.png)
+
+### 20. Tested the rule, and left the lab alone
+
+Asked through the Pi from DC01:
+
+- `wsus01.homelab.internal` now returned `192.168.1.55`.
+- `example.com` still resolved.
+- `nslookup -type=SRV _ldap._tcp.dc._msdcs.homelab.internal` returned `dc01.homelab.internal` on port 389 with address `192.168.1.50`, so the lab's login directions still come through the Pi.
+
+![DC01 asking the Pi for a lab name](images/dc01-lab-name-via-pihole.png)
+![DC01 asking the Pi for the lab's login directions](images/dc01-srv-lookup-via-pihole.png)
+
+`client01` uses DC01 (`192.168.1.50`) as its DNS server (`Get-DnsClientServerAddress -AddressFamily IPv4`), so the lab does not use the Pi-hole. I decided not to point DC01's forwarder at the Pi. The lab would then depend on the Pi, and the rule above sends reverse lookups for `192.168.1.0/24` to DC01, so I worry about a loop. That worry is untested. I just did not want to risk the network.
+
+### 21. Changed the modem
+
+Before the change I set my phone back from its static test settings to automatic (DHCP) and loaded `example.net` on it. It did not appear in Pi-hole's Query Log. That was the "before" picture: the phone no longer used the Pi-hole.
+
+I then replaced `192.168.1.254` in the modem's DNS server box with `192.168.1.189`. The modem said "Changes saved successfully", and after reloading the page the box showed `192.168.1.189`. The lease time is 24 hours, so devices pick up the new setting when they renew or reconnect.
+
+![The modem's DNS box after the change](images/modem-dns-box.png)
+
+### 22. Tested after the change
+
+**PC:** I turned its Wi-Fi off and on so it asked the modem again. `netsh interface ip show dnsservers name="Wi-Fi 2"` then showed `DNS servers configured through DHCP: 192.168.1.189`. The Pi's address came from the modem, and I did not type it in. With the VPN off, `nslookup pitest6203.example.com` (a made-up name) answered from `pi.hole`, and Pi-hole's Query Log had a row for it. The output stopped after the `Name:` line without the error I expected, and I do not know why.
+
+![The PC's DNS from the modem](images/pc-dns-from-modem.png)
+
+**Phone:** this took longer. After the first Wi-Fi off and on, pages loaded, but Pi-hole's Query Log showed only `www.google.com` from the phone, about once a minute. Reloading the log without browsing showed those lookups are the phone's own. Nothing appeared for the sites I loaded in Brave (twice) and Samsung Internet (once), including made-up names. Brave's "Use secure DNS" was on "Use your current service provider" and the Wi-Fi's proxy was None, so neither explained it. After one more Wi-Fi reset, `example.net` appeared, and `http://pitest4417.example.com` (a made-up name) showed up as A, AAAA and HTTPS lookups from the phone. I do not know why the first attempt did not work. While the phone was set by hand in Part 1, I recall a what's-my-IP page lookup did show up, so the hand-set mode worked for page lookups.
+
+![Pi-hole's Query Log with the phone's lookups of a made-up name](images/pihole-log-made-up-name.png)
+
+**Other devices:** Pi-hole's device list showed devices I never touched, which means they picked up the setting from the modem. One was a Sony games console, identified by the maker shown for its hardware address and by the time it was switched on. The person using it said it worked normally. Another, probably a Fire TV stick, appeared with an Amazon maker label and a lookup for a Fire TV domain. Both identifications are working guesses, not confirmed.
+
+## How I checked it (Part 2)
+
+| Check | Command | Good result | What I got |
+| --- | --- | --- | --- |
+| Services running | `systemctl is-active pihole-FTL unbound wg-quick@wg0` | `active` three times | `active` three times |
+| Modem announces an IPv6 DNS server? | `sudo rdisc6 wlan0` | a `Recursive DNS server` line means yes | line present |
+| PC uses Pi-hole (VPN off) | `nslookup example.com` | `Server: pi.hole` | `pi.hole`, `192.168.1.189` |
+| Blocking works for the PC | `nslookup doubleclick.net` | `0.0.0.0` | `::` and `0.0.0.0` |
+| VPN overrides Pi-hole | `nslookup example.com` (VPN on) | `pi.hole` if not overridden | `UnKnown`, `103.86.96.100` |
+| Pi-hole did not know the lab name | `nslookup wsus01.homelab.internal 192.168.1.189` (on DC01) | (a gap, as expected) | `Non-existent domain` |
+| DC01 does know it | `nslookup wsus01.homelab.internal 192.168.1.50` | an address | `192.168.1.55` |
+| Rule stored | `sudo pihole-FTL --config dns.revServers` | the rule | `[ true,192.168.1.0/24,192.168.1.50,homelab.internal ]` |
+| Lab name through the Pi after the rule | same lookup, asking `192.168.1.189` | `192.168.1.55` | `192.168.1.55` |
+| Lab login directions through the Pi | `nslookup -type=SRV _ldap._tcp.dc._msdcs.homelab.internal 192.168.1.189` | `dc01.homelab.internal`, port 389 | priority 0, weight 100, port 389, `dc01.homelab.internal`, `192.168.1.50` |
+| PC got the Pi from the modem | `netsh interface ip show dnsservers name="Wi-Fi 2"` | `192.168.1.189` via DHCP | `192.168.1.189` via DHCP |
+| Phone's page lookups reach Pi-hole | load a made-up name in the phone's browser, search the Query Log | a row | rows for `pitest4417.example.com` |
+
+## What went wrong (Part 2)
+
+1. **A misleading IPv6 check.** The Pi's own view showed no IPv6 DNS, so I first thought the modem did not offer one. Reading the modem's router announcement directly (`rdisc6`) showed it does.
+2. **A test with the wrong name.** A lab-name lookup used `wsus` and not `wsus01`, so its "not found" proved nothing (step 18).
+3. **Misreading the phone's log.** I first treated the once-a-minute `www.google.com` rows as my own test lookups. Reloading the log without browsing showed they are the phone's own. My Part 1 phone check (step 11) also only showed that the phone's address was in the log. I never checked which websites those rows were for, so it was weaker than I thought.
+4. **The phone's page lookups did not reach Pi-hole at first.** They did after a second Wi-Fi reset. The cause is unknown.
+
+## Limits and what I did not test (Part 2)
+
+**What changed from the Part 1 limits:** "only one device uses it" and "the phone is on a static IP" are no longer true. The phone is back on DHCP and other devices use the Pi-hole. The IPv6 limit is still open (below).
+
+- **The VPN on my PC overrides Pi-hole.** Confirmed, and not fixed.
+- **The Pi is now the household's only DNS server.** If it is off or loses Wi-Fi, devices that use it lose lookups until the modem's DNS box is changed back, which can only be done from home. I did not switch the Pi off to test this. Its Wi-Fi signal read 100 in one snapshot, which says nothing about days. A USB-to-Ethernet adapter or moving Pi-hole to a wired Pi are ideas I have not tried.
+- **Not every device has switched yet.** The lease is 24 hours, so devices that are off or asleep switch when they renew or reconnect.
+- **IPv6 is still open.** The modem still announces itself as an IPv6 DNS server, and I do not know which devices use it. I considered switching IPv6 off on the modem and decided not to without evidence.
+- **The phone's delay is unexplained** (step 22).
+- **The lab is not covered,** and the loop worry in step 20 is untested.
+- **The rule's `/24` range also sends reverse lookups for home devices to DC01.** I did not test what DC01 does with them.
+- **The device identifications are guesses** (games console, streaming stick).
+- **Blocking was tested with one domain, on the PC only.**
+- **The settings backup sits on the same memory card.** It is an undo copy, not a real backup.
+- **The `ndisc6` tool is still installed on the Pi.**
+
+**Noticed but not acted on:** the modem's address pool runs from `192.168.1.64` to `192.168.1.253`, and the Proxmox server's fixed address (`192.168.1.100`) is inside it. I have not checked whether that address is reserved on the modem. If it is not, the modem could hand it to another device.
+
+## Sources (Part 2)
+
+- Pi-hole FTL configuration reference: https://docs.pi-hole.net/ftldns/configfile/
+- Pi-hole forum, "Conditional Forwarding cannot be saved (validation error)": https://discourse.pi-hole.net/t/conditional-forwarding-cannot-be-saved-validation-error/86225
+
 ## Related projects
 
 * Admin workstation: [custom-built PC](../custom-pc/README.md)
