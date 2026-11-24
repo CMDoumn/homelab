@@ -2,9 +2,9 @@
 
 A network-wide DNS ad blocker (Pi-hole) that looks up website addresses itself (Unbound) instead of asking a public DNS provider, running on a Raspberry Pi Zero 2 W.
 
-**Status:** Working and tested on one device (my Android phone). Not yet switched on for the whole network. See [Limits and what I did not test](#limits-and-what-i-did-not-test).
+**Status:** Part 1 (2026-11-20): working and tested on one device, my Android phone. Part 2 (2026-11-24): switched on for the whole network through the modem's DHCP setting, with the lab's names (`homelab.internal`) passed to DC01. I saw my PC (VPN off), my phone and a games console using it, and probably a streaming stick. Known limits: the VPN on my PC overrides it, the Pi is now the household's only DNS server, IPv6 is unresolved, and the lab is not behind it. See [Part 2 limits](#limits-and-what-i-did-not-test-part-2).
 
-**Built:** 2026-11-20
+**Built:** Part 1 on 2026-11-20, Part 2 from 2026-11-23 to 2026-11-24
 
 ## Goal
 
