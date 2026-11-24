@@ -346,3 +346,4 @@ I then replaced `192.168.1.254` in the modem's DNS server box with `192.168.1.18
 * Admin workstation: [custom-built PC](../custom-pc/README.md)
 * Raspberry Pi Hardware: [Raspberry Pi 4 and Pi Zero 2 W](raspberry-pi/README.md)
 * WireGuard: [WireGuard remote access](../wireguard/README.md)
+* Lab domain (DC01, which provides the `homelab.internal` names): [Windows Server and Active Directory](../windows-server-ad/README.md)
