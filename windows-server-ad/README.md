@@ -80,6 +80,6 @@ The Settings tab in Group Policy Management was blocked by Windows Server's Inte
 - [Help desk (GLPI)](../help-desk/README.md)
 - [Endpoint management](../endpoint-management/)
 - [File server](../file-server/)
-- * DNS filtering that passes the lab's `homelab.internal` names to this domain controller: [Pi-hole + Unbound](../pihole-unbound/README.md)
+- DNS filtering that passes the lab's `homelab.internal` names to this domain controller: [Pi-hole + Unbound](../pihole-unbound/README.md)
 
 *Passwords, product keys, serial numbers, hardware addresses, and internet addresses tied to my home connection are not shown.*
